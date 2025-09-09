@@ -25,19 +25,36 @@ struct pipe {
 int
 pipealloc(struct file **f0, struct file **f1)
 {
+  // assign pointer for pipe
   struct pipe *pi;
 
+  // 0 means a null pointer, not a real memory address 
   pi = 0;
   *f0 = *f1 = 0;
+
+  // validation check: after fileallock(), the memory pointer for file should not be null
+  // filealloc() assigns the file struct instance, not creates a real file 
   if((*f0 = filealloc()) == 0 || (*f1 = filealloc()) == 0)
     goto bad;
+
+  // TODO: what does the kallock() exactly do?
+  // anyway, it is a validation check including the type casting as a pipe* pointer
   if((pi = (struct pipe*)kalloc()) == 0)
     goto bad;
+
+  // changes the value of the pipe instance
   pi->readopen = 1;
   pi->writeopen = 1;
   pi->nwrite = 0;
   pi->nread = 0;
+
+  // initalize lock from pipe, name for debugging.
   initlock(&pi->lock, "pipe");
+
+  // changes values for file struct
+  // the assigned file instances has same pipe instacne on the pipe field.
+  // f0 becomes the readable file, f1 becomes the writable file
+  // just fun, cypher expression: (:f0) <-[:read]- (:pipe) -[:write]-> (:f1)
   (*f0)->type = FD_PIPE;
   (*f0)->readable = 1;
   (*f0)->writable = 0;
@@ -50,6 +67,7 @@ pipealloc(struct file **f0, struct file **f1)
 
  bad:
   if(pi)
+    // TODO: what does kfree() exactly do?
     kfree((char*)pi);
   if(*f0)
     fileclose(*f0);
