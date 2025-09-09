@@ -477,11 +477,15 @@ sys_exec(void)
 uint64
 sys_pipe(void)
 {
+  // TODO: why user pointer is uint64 type on xv6?
   uint64 fdarray; // user pointer to array of two integers
-  struct file *rf, *wf;
-  int fd0, fd1;
+  struct file *rf, *wf; // read file and write file
+  int fd0, fd1; // read file descriptor and write file descriptor
+  
+  // TODO: what does the proc and myproc() exactly do?
   struct proc *p = myproc();
 
+  // let the 0-th register value on the process become the value of fdarray 
   argaddr(0, &fdarray);
   if(pipealloc(&rf, &wf) < 0)
     return -1;
