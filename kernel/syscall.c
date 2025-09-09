@@ -80,6 +80,7 @@ argstr(int n, char *buf, int max)
 }
 
 // Prototypes for the functions that handle system calls.
+// extern keywords are used to declare that the functions are defined in other files when linking
 extern uint64 sys_fork(void);
 extern uint64 sys_exit(void);
 extern uint64 sys_wait(void);
@@ -134,6 +135,7 @@ syscall(void)
   int num;
   struct proc *p = myproc();
 
+  // read the number of the system call from the a7 register
   num = p->trapframe->a7;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     // Use num to lookup the system call function for num, call it,
