@@ -11,6 +11,7 @@
 #define PIPESIZE 512
 
 struct pipe {
+  // TODO: What does the spinlock exactly do and how does it consist of?
   struct spinlock lock;
   char data[PIPESIZE];
   uint nread;     // number of bytes read
@@ -19,6 +20,8 @@ struct pipe {
   int writeopen;  // write fd is still open
 };
 
+// allpcating pipe between two files: one for reading, one for writing
+// TODO: why both the parameter types are double pointers?
 int
 pipealloc(struct file **f0, struct file **f1)
 {
