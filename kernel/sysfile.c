@@ -495,16 +495,29 @@ sys_pipe(void)
   // validating allocating the pipe on readable file and writable file done.
   if(pipealloc(&rf, &wf) < 0)
     return -1;
+
+  // TODO: why this should be -1?
+  // MAYBE: fd0 can become 0 when fdalloc() succeeds
   fd0 = -1;
+
+  // when fdalloc fails,
   if((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0){
+    // however, reading file descriptor allocation didn't fail 
     if(fd0 >= 0)
+      // then reset the 0-th index of the opened file pointer array on the process
       p->ofile[fd0] = 0;
+
+    // close the read file and write file
     fileclose(rf);
     fileclose(wf);
     return -1;
   }
+  
+  // TODO: How does copyout() exactly works?
+  // From the kernel got copied the values to the user program  
   if(copyout(p->pagetable, fdarray, (char*)&fd0, sizeof(fd0)) < 0 ||
      copyout(p->pagetable, fdarray+sizeof(fd0), (char *)&fd1, sizeof(fd1)) < 0){
+    // resets the opened file pointers on the process to null pointer 
     p->ofile[fd0] = 0;
     p->ofile[fd1] = 0;
     fileclose(rf);
