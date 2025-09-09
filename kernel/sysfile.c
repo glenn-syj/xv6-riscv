@@ -42,7 +42,11 @@ fdalloc(struct file *f)
   int fd;
   struct proc *p = myproc();
 
+  // NOFILE: maximum number of file that can be opened per process
   for(fd = 0; fd < NOFILE; fd++){
+    // as this 0 means null pointer,
+    // if the fd-th file array slot is not assigned yet, 
+    // then assign the pointer to the already allocated target file instance on the slot
     if(p->ofile[fd] == 0){
       p->ofile[fd] = f;
       return fd;
@@ -487,6 +491,8 @@ sys_pipe(void)
 
   // let the 0-th register value on the process become the value of fdarray 
   argaddr(0, &fdarray);
+
+  // validating allocating the pipe on readable file and writable file done.
   if(pipealloc(&rf, &wf) < 0)
     return -1;
   fd0 = -1;
