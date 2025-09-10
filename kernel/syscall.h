@@ -1,4 +1,5 @@
 // System call numbers
+// These are the system call numbers that are used in the user/usys.S file
 #define SYS_fork    1
 #define SYS_exit    2
 #define SYS_wait    3

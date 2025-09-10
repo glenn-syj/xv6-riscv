@@ -11,6 +11,7 @@
 #define PIPESIZE 512
 
 struct pipe {
+  // TODO: What does the spinlock exactly do and how does it consist of?
   struct spinlock lock;
   char data[PIPESIZE];
   uint nread;     // number of bytes read
@@ -19,22 +20,41 @@ struct pipe {
   int writeopen;  // write fd is still open
 };
 
+// allpcating pipe between two files: one for reading, one for writing
+// TODO: why both the parameter types are double pointers?
 int
 pipealloc(struct file **f0, struct file **f1)
 {
+  // assign pointer for pipe
   struct pipe *pi;
 
+  // 0 means a null pointer, not a real memory address 
   pi = 0;
   *f0 = *f1 = 0;
+
+  // validation check: after fileallock(), the memory pointer for file should not be null
+  // filealloc() assigns the file struct instance, not creates a real file 
   if((*f0 = filealloc()) == 0 || (*f1 = filealloc()) == 0)
     goto bad;
+
+  // TODO: what does the kallock() exactly do?
+  // anyway, it is a validation check including the type casting as a pipe* pointer
   if((pi = (struct pipe*)kalloc()) == 0)
     goto bad;
+
+  // changes the value of the pipe instance
   pi->readopen = 1;
   pi->writeopen = 1;
   pi->nwrite = 0;
   pi->nread = 0;
+
+  // initalize lock from pipe, name for debugging.
   initlock(&pi->lock, "pipe");
+
+  // changes values for file struct
+  // the assigned file instances has same pipe instacne on the pipe field.
+  // f0 becomes the readable file, f1 becomes the writable file
+  // just for fun, cypher expression: (:f0) <-[:read]- (:pipe) -[:write]-> (:f1)
   (*f0)->type = FD_PIPE;
   (*f0)->readable = 1;
   (*f0)->writable = 0;
@@ -47,6 +67,7 @@ pipealloc(struct file **f0, struct file **f1)
 
  bad:
   if(pi)
+    // TODO: what does kfree() exactly do?
     kfree((char*)pi);
   if(*f0)
     fileclose(*f0);
@@ -55,12 +76,15 @@ pipealloc(struct file **f0, struct file **f1)
   return -1;
 }
 
+// closes pipe with the 
 void
 pipeclose(struct pipe *pi, int writable)
 {
   acquire(&pi->lock);
+  // writable & readopen == 0 
   if(writable){
     pi->writeopen = 0;
+    // TODO: why does it wake up the channel - the pointer of the nread? 
     wakeup(&pi->nread);
   } else {
     pi->readopen = 0;
@@ -73,6 +97,9 @@ pipeclose(struct pipe *pi, int writable)
     release(&pi->lock);
 }
 
+
+// write: rf -> wf, n means the channel which the proc is sleeping on
+// this is not file-level, it is a pipe-level write method
 int
 pipewrite(struct pipe *pi, uint64 addr, int n)
 {
@@ -81,15 +108,20 @@ pipewrite(struct pipe *pi, uint64 addr, int n)
 
   acquire(&pi->lock);
   while(i < n){
+    // the reading part is closed or process is killed
     if(pi->readopen == 0 || killed(pr)){
       release(&pi->lock);
       return -1;
     }
+    // there is no space to write on the pipe buffer
     if(pi->nwrite == pi->nread + PIPESIZE){ //DOC: pipewrite-full
+      // wake up the process on the channel waiting for reading events/taking bytes
       wakeup(&pi->nread);
+      // sleep the process on the channel on the pointer of nwrite
       sleep(&pi->nwrite, &pi->lock);
     } else {
       char ch;
+      // copyin results to data in user memory copied to kernel
       if(copyin(pr->pagetable, &ch, addr + i, 1) == -1)
         break;
       pi->data[pi->nwrite++ % PIPESIZE] = ch;
@@ -121,6 +153,7 @@ piperead(struct pipe *pi, uint64 addr, int n)
     if(pi->nread == pi->nwrite)
       break;
     ch = pi->data[pi->nread++ % PIPESIZE];
+    // copyout makes the value on kernel copied to user
     if(copyout(pr->pagetable, addr + i, &ch, 1) == -1)
       break;
   }

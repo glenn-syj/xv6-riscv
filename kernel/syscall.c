@@ -30,6 +30,8 @@ fetchstr(uint64 addr, char *buf, int max)
   return strlen(buf);
 }
 
+// TODO: trapframe should be explained well on this file
+// argraw() is used to get the register value from the trapframe
 static uint64
 argraw(int n)
 {
@@ -65,6 +67,7 @@ argint(int n, int *ip)
 void
 argaddr(int n, uint64 *ip)
 {
+  // get the n-th register value from the trapframe as a pointer 
   *ip = argraw(n);
 }
 
@@ -80,6 +83,7 @@ argstr(int n, char *buf, int max)
 }
 
 // Prototypes for the functions that handle system calls.
+// extern keywords are used to declare that the functions are defined in other files when linking
 extern uint64 sys_fork(void);
 extern uint64 sys_exit(void);
 extern uint64 sys_wait(void);
@@ -134,7 +138,11 @@ syscall(void)
   int num;
   struct proc *p = myproc();
 
+  // read the number of the system call from the a7 register
+  // a7 register is used to store the number of the system call
   num = p->trapframe->a7;
+
+  // validation check for the system call number
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     // Use num to lookup the system call function for num, call it,
     // and store its return value in p->trapframe->a0

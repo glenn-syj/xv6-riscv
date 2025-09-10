@@ -42,7 +42,11 @@ fdalloc(struct file *f)
   int fd;
   struct proc *p = myproc();
 
+  // NOFILE: maximum number of file that can be opened per process
   for(fd = 0; fd < NOFILE; fd++){
+    // as this 0 means null pointer,
+    // if the fd-th file array slot is not assigned yet, 
+    // then assign the pointer to the already allocated target file instance on the slot
     if(p->ofile[fd] == 0){
       p->ofile[fd] = f;
       return fd;
@@ -87,10 +91,12 @@ sys_write(void)
   uint64 p;
   
   argaddr(1, &p);
+  // the 2nd register (0-indexed) int value becomes n
   argint(2, &n);
   if(argfd(0, 0, &f) < 0)
     return -1;
 
+  // n is the total number of bytes to write to the file.
   return filewrite(f, p, n);
 }
 
@@ -477,24 +483,43 @@ sys_exec(void)
 uint64
 sys_pipe(void)
 {
+  // TODO: why user pointer is uint64 type on xv6?
   uint64 fdarray; // user pointer to array of two integers
-  struct file *rf, *wf;
-  int fd0, fd1;
+  struct file *rf, *wf; // read file and write file
+  int fd0, fd1; // read file descriptor and write file descriptor
+  
+  // TODO: what does the proc and myproc() exactly do?
   struct proc *p = myproc();
 
+  // let the 0-th register value on the process become the value of fdarray 
   argaddr(0, &fdarray);
+
+  // validating allocating the pipe on readable file and writable file done.
   if(pipealloc(&rf, &wf) < 0)
     return -1;
+
+  // TODO: why this should be -1?
+  // MAYBE: fd0 can become 0 when fdalloc() succeeds
   fd0 = -1;
+
+  // when fdalloc fails,
   if((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0){
+    // however, reading file descriptor allocation didn't fail 
     if(fd0 >= 0)
+      // then reset the 0-th index of the opened file pointer array on the process
       p->ofile[fd0] = 0;
+
+    // close the read file and write file
     fileclose(rf);
     fileclose(wf);
     return -1;
   }
+  
+  // TODO: How does copyout() exactly works?
+  // From the kernel got copied the values to the user program  
   if(copyout(p->pagetable, fdarray, (char*)&fd0, sizeof(fd0)) < 0 ||
      copyout(p->pagetable, fdarray+sizeof(fd0), (char *)&fd1, sizeof(fd1)) < 0){
+    // resets the opened file pointers on the process to null pointer 
     p->ofile[fd0] = 0;
     p->ofile[fd1] = 0;
     fileclose(rf);

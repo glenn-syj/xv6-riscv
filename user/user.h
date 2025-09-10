@@ -1,5 +1,8 @@
 #define SBRK_ERROR ((char *)-1)
 
+// This user.h file is the interface between the user-level program and the kernel.
+// The interfaces got linked with usys.S through .o file on the memory.
+
 struct stat;
 
 // system calls

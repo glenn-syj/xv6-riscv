@@ -122,6 +122,8 @@ mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 # http://www.gnu.org/software/make/manual/html_node/Chained-Rules.html
 .PRECIOUS: %.o
 
+# Compile and link all user programs in UPROGS
+# UPROGS includes all the user programs that are used in the fs.img
 UPROGS=\
 	$U/_cat\
 	$U/_echo\

@@ -573,8 +573,11 @@ wakeup(void *chan)
   struct proc *p;
 
   for(p = proc; p < &proc[NPROC]; p++) {
+    // if the process is not the one which executes wakeup()
     if(p != myproc()){
       acquire(&p->lock);
+      // the meaning 'wakeup' relates to the state of the process
+      // READ: proc.h -> procstate
       if(p->state == SLEEPING && p->chan == chan) {
         p->state = RUNNABLE;
       }
