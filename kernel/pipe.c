@@ -54,7 +54,7 @@ pipealloc(struct file **f0, struct file **f1)
   // changes values for file struct
   // the assigned file instances has same pipe instacne on the pipe field.
   // f0 becomes the readable file, f1 becomes the writable file
-  // just fun, cypher expression: (:f0) <-[:read]- (:pipe) -[:write]-> (:f1)
+  // just for fun, cypher expression: (:f0) <-[:read]- (:pipe) -[:write]-> (:f1)
   (*f0)->type = FD_PIPE;
   (*f0)->readable = 1;
   (*f0)->writable = 0;
@@ -76,12 +76,15 @@ pipealloc(struct file **f0, struct file **f1)
   return -1;
 }
 
+// closes pipe with the 
 void
 pipeclose(struct pipe *pi, int writable)
 {
   acquire(&pi->lock);
+  // writable & readopen == 0 
   if(writable){
     pi->writeopen = 0;
+    // TODO: why does it wake up the channel - the pointer of the nread? 
     wakeup(&pi->nread);
   } else {
     pi->readopen = 0;
@@ -94,6 +97,9 @@ pipeclose(struct pipe *pi, int writable)
     release(&pi->lock);
 }
 
+
+// write: rf -> wf, n means the channel which the proc is sleeping on
+// this is not file-level, it is a pipe-level write method
 int
 pipewrite(struct pipe *pi, uint64 addr, int n)
 {
@@ -102,15 +108,20 @@ pipewrite(struct pipe *pi, uint64 addr, int n)
 
   acquire(&pi->lock);
   while(i < n){
+    // the reading part is closed or process is killed
     if(pi->readopen == 0 || killed(pr)){
       release(&pi->lock);
       return -1;
     }
+    // there is no space to write on the pipe buffer
     if(pi->nwrite == pi->nread + PIPESIZE){ //DOC: pipewrite-full
+      // wake up the process on the channel waiting for reading events/taking bytes
       wakeup(&pi->nread);
+      // sleep the process on the channel on the pointer of nwrite
       sleep(&pi->nwrite, &pi->lock);
     } else {
       char ch;
+      // copyin results to data in user memory copied to kernel
       if(copyin(pr->pagetable, &ch, addr + i, 1) == -1)
         break;
       pi->data[pi->nwrite++ % PIPESIZE] = ch;
@@ -142,6 +153,7 @@ piperead(struct pipe *pi, uint64 addr, int n)
     if(pi->nread == pi->nwrite)
       break;
     ch = pi->data[pi->nread++ % PIPESIZE];
+    // copyout makes the value on kernel copied to user
     if(copyout(pr->pagetable, addr + i, &ch, 1) == -1)
       break;
   }
