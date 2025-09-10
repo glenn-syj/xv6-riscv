@@ -91,10 +91,12 @@ sys_write(void)
   uint64 p;
   
   argaddr(1, &p);
+  // the 2nd register (0-indexed) int value becomes n
   argint(2, &n);
   if(argfd(0, 0, &f) < 0)
     return -1;
 
+  // n is the total number of bytes to write to the file.
   return filewrite(f, p, n);
 }
 
